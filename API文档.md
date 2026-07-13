@@ -100,15 +100,6 @@ GET http://localhost:3000/api/quiz
 | options | string[] | 四个选项 |
 | answer | number | 正确答案的选项索引（0-3） |
 
-### 使用示例（JavaScript）
-```javascript
-const res = await fetch("https://your-app.vercel.app/api/quiz");
-const quiz = await res.json();
-console.log(quiz.question);       // 题目
-console.log(quiz.options);        // 选项
-console.log(quiz.options[quiz.answer]);  // 正确答案
-```
-
 ---
 
 ## 错误处理

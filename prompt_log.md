@@ -1,7 +1,5 @@
 ﻿# Prompt 日志 — Melody Lab
 
-> 记录本项目开发过程中使用 AI（Codex）的关键 Prompt 及对应输出。
-
 ---
 
 ## Prompt #1 — 项目初始化
@@ -66,13 +64,6 @@
 - **Prompt：** "创建三个 Next.js API 路由：1) GET /api/chords 返回所有和弦 2) GET /api/scales 返回所有音阶 3) GET /api/quiz 返回随机乐理题"
 - **AI 输出：** 生成了三个 API 路由，chords 和 scales 使用 force-static 缓存，quiz 使用 force-dynamic
 - **应用：** 直接使用
-
-## Prompt #10 — 零依赖独立 HTML 版
-- **文件：** `index.html`
-- **诉求：** 生成一个可以在浏览器中直接打开使用的单文件 HTML 版本
-- **Prompt：** "将 Next.js 项目的全部功能合并到一个 index.html 中，包含：三页导航（钢琴/探索/可视化）、Web Audio API、Canvas 可视化、所有 CSS 和 JS。不需要任何外部依赖。"
-- **AI 输出：** 生成了完整的 index.html，包含所有功能
-- **应用：** 人工调整了钢琴键盘布局 CSS 和视觉配色
 
 ## AI 使用总结
 本项目中约 80% 的代码由 AI（Codex）生成，人工主要负责：
