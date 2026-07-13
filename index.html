@@ -104,6 +104,16 @@ input[type=range]{accent-color:#8b5cf6;width:140px}
     <div style="display:flex;justify-content:center;gap:8px;margin-bottom:8px" id="vizModes"></div>
     <canvas class="visualizer" id="vizCanvas"></canvas>
     <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:12px">
+      <div class="card" style="width:100%">
+        <div class="card-title">🎧 音频源</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="nav-btn" id="captureAudioBtn">🎤 捕获系统音频</button>
+          <label class="nav-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" for="audioFileInput">📁 选择音频文件</label>
+          <input type="file" id="audioFileInput" accept="audio/*" style="display:none">
+          <button class="nav-btn" id="stopAudioBtn" style="display:none;color:#fca5a5">⏹ 停止</button>
+          <span id="audioStatus" style="font-size:12px;color:rgba(255,255,255,0.3)">当前: 合成信号</span>
+        </div>
+      </div>
       <div class="card" style="display:flex;align-items:center;gap:8px">
         <span style="font-size:12px;color:rgba(255,255,255,0.4)">频率</span>
         <input type="range" id="freqSlider" min="65" max="1047" value="440">
@@ -359,6 +369,13 @@ const vizCanvas = document.getElementById('vizCanvas');
 const ctx = vizCanvas.getContext('2d');
 let vizMode = 'spectrum';
 let vizAnim;
+let audioAnalyser = null;
+let audioSourceType = 'synthetic'; // 'synthetic' | 'system' | 'file'
+let audioSourceStream = null;
+let audioElement = null;
+let audioFreqArray = null;
+let audioWaveArray = null;
+let isCapturing = false;
 
 function resizeCanvas() {
   const dpr = window.devicePixelRatio||1;
@@ -387,18 +404,32 @@ let vizTime = 0;
 function drawViz() {
   const rect = resizeCanvas();
   const w = rect.width, h = rect.height;
-  vizTime += 0.02;
+  const useRealAudio = audioAnalyser && audioSourceType !== 'synthetic';
+  if(!useRealAudio) vizTime += 0.02;
 
   // Background
   ctx.fillStyle = '#0a0a1a';
   ctx.fillRect(0,0,w,h);
 
   const barCount = vizMode==='circular'?64:vizMode==='spectrum'?32:128;
-  const bars = Array.from({length:barCount},(_,i)=>{
-    const freq = 50+i*(2000/barCount);
-    const target = (Math.sin(vizTime*freq*0.001)*0.5+0.5)*0.8 + (Math.sin(vizTime*freq*0.003+(i/barCount)*Math.PI*2)*0.3+0.3)*0.2;
-    return target;
-  });
+  let bars;
+  if(useRealAudio && audioFreqArray) {
+    audioAnalyser.getByteFrequencyData(audioFreqArray);
+    audioAnalyser.getByteTimeDomainData(audioWaveArray);
+    bars = Array.from({length:barCount},(_,i)=>{
+      const idx = Math.floor((i/barCount)*audioFreqArray.length);
+      if(vizMode==='waveform') {
+        const val = (audioWaveArray[idx]-128)/128;
+        return val*0.8+0.5;
+      }
+      return audioFreqArray[idx]/255;
+    });
+  } else {
+    bars = Array.from({length:barCount},(_,i)=>{
+      const freq = 50+i*(2000/barCount);
+      return (Math.sin(vizTime*freq*0.001)*0.5+0.5)*0.8 + (Math.sin(vizTime*freq*0.003+(i/barCount)*Math.PI*2)*0.3+0.3)*0.2;
+    });
+  }
 
   if(vizMode==='spectrum') {
     const barW = w/barCount;
@@ -419,7 +450,7 @@ function drawViz() {
     ctx.shadowBlur = 10;
     bars.forEach((amp,i)=>{
       const x = (i/barCount)*w;
-      const y = h/2 + amp * h * 0.4 * Math.sin(i*0.1+vizTime*2);
+      const y = useRealAudio ? h/2 + (amp-0.5)*h*0.8 : h/2 + amp*h*0.4*Math.sin(i*0.1+vizTime*2);
       i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
     });
     ctx.stroke();
@@ -492,6 +523,98 @@ document.getElementById('testToneBtn').addEventListener('click',()=>{
   btn.style.borderColor = 'rgba(239,68,68,0.3)';
   btn.style.background = 'rgba(239,68,68,0.1)';
 });
+
+// ===== 音频捕获（系统音频 + 文件播放）=====
+async function captureSystemAudio() {
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      audio: true,
+      video: { width: 1, height: 1 }
+    });
+    stream.getVideoTracks().forEach(t => t.stop());
+    setupAudioCapture(stream, 'system');
+  } catch(e) {
+    updateAudioStatus('捕获失败: ' + e.message, true);
+  }
+}
+
+function startFilePlayback(file) {
+  stopAudioSource();
+  const url = URL.createObjectURL(file);
+  const audio = new Audio(url);
+  audio.loop = true;
+  audio.crossOrigin = 'anonymous';
+  audio.play().then(() => {
+    const stream = (audio.captureStream || audio.mozCaptureStream).call(audio);
+    setupAudioCapture(stream, 'file');
+    audioElement = audio;
+  }).catch(e => {
+    updateAudioStatus('播放失败: ' + e.message, true);
+  });
+}
+
+function setupAudioCapture(stream, type) {
+  stopAudioSource();
+  audioSourceStream = stream;
+  audioSourceType = type;
+  const ctx = getCtx();
+  const source = ctx.createMediaStreamSource(stream);
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 256;
+  audioAnalyser = analyser;
+  audioFreqArray = new Uint8Array(analyser.frequencyBinCount);
+  audioWaveArray = new Uint8Array(analyser.frequencyBinCount);
+  source.connect(analyser);
+  isCapturing = true;
+  document.getElementById('captureAudioBtn').style.display = 'none';
+  document.querySelector('label[for="audioFileInput"]').style.display = 'none';
+  document.getElementById('stopAudioBtn').style.display = '';
+  updateAudioStatus(type === 'system' ? '已捕获系统音频 ✓' : '正在播放音频文件 ✓', false);
+}
+
+function stopAudioSource() {
+  if(audioSourceStream) {
+    audioSourceStream.getTracks().forEach(t => t.stop());
+    audioSourceStream = null;
+  }
+  if(audioElement) {
+    audioElement.pause();
+    audioElement = null;
+  }
+  audioAnalyser = null;
+  audioFreqArray = null;
+  audioWaveArray = null;
+  audioSourceType = 'synthetic';
+  isCapturing = false;
+  document.getElementById('captureAudioBtn').style.display = '';
+  const fileLabel = document.querySelector('label[for="audioFileInput"]');
+  if(fileLabel) fileLabel.style.display = '';
+  document.getElementById('stopAudioBtn').style.display = 'none';
+  updateAudioStatus('合成信号', false);
+}
+
+function updateAudioStatus(msg, isError) {
+  const el = document.getElementById('audioStatus');
+  if(el) {
+    el.textContent = '当前: ' + msg;
+    el.style.color = isError ? '#fca5a5' : 'rgba(255,255,255,0.3)';
+  }
+}
+
+// 捕获系统音频按钮
+document.getElementById('captureAudioBtn').addEventListener('click', captureSystemAudio);
+
+// 音频文件上传
+document.getElementById('audioFileInput').addEventListener('change', function(e) {
+  if(this.files && this.files[0]) startFilePlayback(this.files[0]);
+  this.value = '';
+});
+
+// 停止音频源
+document.getElementById('stopAudioBtn').addEventListener('click', stopAudioSource);
+
+// 页面离开时清理
+window.addEventListener('beforeunload', stopAudioSource);
 
 // 同步钢琴点击到 lastNote
 document.addEventListener('mousedown',function(e){
