@@ -51,6 +51,20 @@ input[type=range]{accent-color:#8b5cf6;width:140px}
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+/* 可滚动钢琴 */
+.piano-scroll{overflow-x:auto;overflow-y:hidden;max-width:100%;padding-bottom:4px}
+.piano-scroll::-webkit-scrollbar{height:3px}
+.piano-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:2px}
+/* 录制按钮 */
+.rec-btn{padding:6px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);font-size:13px;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5)}
+.rec-btn:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7)}
+.rec-btn.recording{background:rgba(239,68,68,0.2)!important;border-color:#ef4444!important;color:#fca5a5!important;animation:recPulse 1s infinite}
+.rec-btn.playing{background:rgba(34,197,94,0.2)!important;border-color:#22c55e!important;color:#86efac!important}
+@keyframes recPulse{0%,100%{opacity:1}50%{opacity:0.5}}
+/* 键盘提示 */
+.kbd-hint{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:rgba(255,255,255,0.15);margin-top:8px;flex-wrap:wrap;justify-content:center}
+.kbd-hint kbd{display:inline-block;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);font-family:monospace;font-size:9px;color:rgba(255,255,255,0.2);line-height:1.4}
+.kbd-hint kbd.active{background:rgba(96,165,250,0.25);border-color:rgba(96,165,250,0.4);color:#93c5fd}
 </style>
 </head>
 <body>
@@ -79,7 +93,16 @@ input[type=range]{accent-color:#8b5cf6;width:140px}
         <div style="display:flex;gap:4px;flex-wrap:wrap" id="quickScales"></div>
       </div>
     </div>
+    <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="rec-btn" id="recBtn">⏺ 录制</button>
+      <button class="rec-btn" id="playRecBtn" style="display:none">▶ 回放</button>
+      <button class="rec-btn" id="clearRecBtn" style="display:none">🗑 清除</button>
+      <span id="recStatus" style="font-size:11px;color:rgba(255,255,255,0.2);line-height:32px">未录制</span>
+    </div>
+    <div class="piano-scroll">
     <div class="piano-wrap" id="pianoContainer"></div>
+    </div>
+    <div class="kbd-hint" id="kbdHint"></div>
   </div>
 
   <!-- ========== PAGE 2: EXPLORE ========== -->
@@ -178,19 +201,20 @@ function playArp(freqs, intv) { freqs.forEach((f,i) => setTimeout(()=>playNote(f
 // ===== MIDI NOTE POSITIONS =====
 const BLACK_SEMIS = { 1:0.7, 3:1.7, 6:3.7, 8:4.7, 10:5.7 };
 
-function buildPiano(containerId, highlightNotes, onNoteClick) {
+function buildPiano(containerId, highlightNotes, onNoteClick, rangeStart, rangeEnd) {
   const wrap = document.getElementById(containerId);
   if(!wrap) return;
-  const allNotes = genNotes(48,71);
+  const start = rangeStart||48, end = rangeEnd||71;
+  const allNotes = genNotes(start, end);
   const whiteNotes = allNotes.filter(n=>!n.name.includes("#"));
   const blackNotes = allNotes.filter(n=>n.name.includes("#"));
-  
+  const firstOctave = Math.floor(start/12)-1;
   let html = '<div class="black-keys" style="height:0">';
   blackNotes.forEach(n => {
     const nn = n.name.replace(/\d/,"");
     const oct = parseInt(n.name.replace(/[^0-9]/g,""));
     const pos = BLACK_SEMIS[nn] || 0;
-    const left = ((oct-3)*7 + pos) * (100/7) - 1.5;
+    const left = ((oct-firstOctave)*7 + pos) * (100/7) - 1.5;
     const hl = highlightNotes && highlightNotes.includes(n.midi) ? ' highlight' : '';
     html += `<div class="black-key${hl}" style="left:${left}%" data-midi="${n.midi}"></div>`;
   });
@@ -207,8 +231,7 @@ function buildPiano(containerId, highlightNotes, onNoteClick) {
     el.addEventListener('mousedown', () => {
       const midi = parseInt(el.dataset.midi);
       const note = allNotes.find(n=>n.midi===midi);
-      if(note) playNote(note.freq, 0.5);
-      if(onNoteClick) onNoteClick(midi);
+      if(note) triggerNote(midi);
     });
   });
 }
@@ -233,15 +256,7 @@ pages.forEach((p,i)=>{
 
 // ===== PAGE 1: PIANO =====
 let lastMidiVal = 60;
-buildPiano('pianoContainer', []);
-document.querySelectorAll('#pianoContainer [data-midi]').forEach(el=>{
-  el.addEventListener('mousedown', ()=>{
-    const midi = parseInt(el.dataset.midi);
-    lastMidiVal = midi;
-    document.getElementById('lastNote').textContent = m2n(midi);
-    document.getElementById('lastMidi').textContent = 'MIDI: ' + midi;
-  });
-});
+buildPiano('pianoContainer', [], null, 36, 83);
 
 // Quick chords
 (function(){
@@ -276,6 +291,165 @@ document.querySelectorAll('#pianoContainer [data-midi]').forEach(el=>{
     s.appendChild(btn);
   });
 })();
+
+// ===== 键盘映射 =====
+const KEY_MAP = {
+  'z':48,'s':49,'x':50,'d':51,'c':52,
+  'v':53,'g':54,'b':55,'h':56,'n':57,'j':58,'m':59,
+  'q':60,'2':61,'w':62,'3':63,'e':64,
+  'r':65,'5':66,'t':67,'6':68,'y':69,'7':70,'u':71,
+  'i':72,'9':73,'o':74,'0':75,'p':76
+};
+const KEY_HINT = [
+  ['c2','z','s','x','d','c','v','g','b','h','n','j','m'],
+  ['c3','q','2','w','3','e','r','5','t','6','y','7','u'],
+  ['c4','i','9','o','0','p']
+];
+let keyboardOctave = 0;
+let activeKeys = new Map();
+let pressedKeys = new Set();
+
+function triggerNote(midi) {
+  const note = allNotesCache.find(n=>n.midi===midi);
+  if(!note) return;
+  lastMidiVal = midi;
+  playNote(note.freq, 0.5);
+  document.getElementById('lastNote').textContent = m2n(midi);
+  document.getElementById('lastMidi').textContent = 'MIDI: ' + midi;
+  // Record if active
+  if(isRecording) {
+    const now = Date.now();
+    recordedNotes.push({midi, time: now - recStartTime, dur:0.5});
+  }
+  // Flash key
+  const key = document.querySelector(`#pianoContainer [data-midi="${midi}"]`);
+  if(key) { key.classList.add('highlight'); setTimeout(()=>key.classList.remove('highlight'),150); }
+}
+const allNotesCache = genNotes(36,83);
+
+// 键盘事件
+document.addEventListener('keydown', (e)=>{
+  if(e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
+  const key = e.key.toLowerCase();
+  if(key==='arrowleft'){keyboardOctave=Math.max(-2,keyboardOctave-1);updateKbdHint();return}
+  if(key==='arrowright'){keyboardOctave=Math.min(2,keyboardOctave+1);updateKbdHint();return}
+  const midi = KEY_MAP[key];
+  if(midi!==undefined && !pressedKeys.has(key)) {
+    pressedKeys.add(key);
+    const note = allNotesCache.find(n=>n.midi===midi+keyboardOctave*12);
+    if(note) triggerNote(note.midi);
+  }
+});
+document.addEventListener('keyup', (e)=>{
+  const key = e.key.toLowerCase();
+  pressedKeys.delete(key);
+});
+
+// ===== 键盘提示 =====
+function updateKbdHint() {
+  const el = document.getElementById('kbdHint');
+  if(!el) return;
+  const oct = 3 + keyboardOctave;
+  const noteNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  let html = '<span style="margin-right:6px">⌨:</span>';
+  let prevWhite = null;
+  KEY_HINT.forEach((row,ri)=>{
+    html += '<span style="margin:0 4px">';
+    row.forEach((key,ki)=>{
+      if(ki===0) return; // skip note name
+      const idx = KEY_MAP[key];
+      if(idx===undefined) return;
+      const absMidi = idx + keyboardOctave*12;
+      const nn = noteNames[absMidi%12];
+      const isBlack = nn.includes('#');
+      if(isBlack) {
+        html += `<kbd style="background:rgba(255,255,255,0.08)">${key.toUpperCase()}</kbd>`;
+      } else {
+        html += `<kbd>${key.toUpperCase()}</kbd>`;
+      }
+    });
+    html += '</span>';
+  });
+  html += `<span style="margin-left:8px;color:rgba(255,255,255,0.2)">← → 移调</span>`;
+  el.innerHTML = html;
+}
+updateKbdHint();
+
+// ===== 录制/回放 =====
+let isRecording = false;
+let recordedNotes = [];
+let recStartTime = 0;
+let recPlaybackTimers = [];
+
+function startRecording() {
+  recordedNotes = [];
+  isRecording = true;
+  recStartTime = Date.now();
+  recPlaybackTimers.forEach(t=>clearTimeout(t));
+  recPlaybackTimers = [];
+  const btn = document.getElementById('recBtn');
+  btn.textContent = '⏹ 停止录制';
+  btn.classList.add('recording');
+  document.getElementById('recStatus').textContent = '录制中...';
+  document.getElementById('recStatus').style.color = '#fca5a5';
+  document.getElementById('playRecBtn').style.display = 'none';
+  document.getElementById('clearRecBtn').style.display = 'none';
+}
+
+function stopRecording() {
+  isRecording = false;
+  const btn = document.getElementById('recBtn');
+  btn.textContent = recordedNotes.length > 0 ? '⏺ 已录制' : '⏺ 录制';
+  btn.classList.remove('recording');
+  if(recordedNotes.length > 0) {
+    document.getElementById('playRecBtn').style.display = '';
+    document.getElementById('clearRecBtn').style.display = '';
+    document.getElementById('recStatus').textContent = recordedNotes.length + ' 个音符';
+    document.getElementById('recStatus').style.color = 'rgba(255,255,255,0.3)';
+  } else {
+    document.getElementById('recStatus').textContent = '未录制';
+    document.getElementById('recStatus').style.color = 'rgba(255,255,255,0.2)';
+  }
+}
+
+function playRecording() {
+  if(recordedNotes.length===0) return;
+  const btn = document.getElementById('playRecBtn');
+  btn.classList.add('playing');
+  btn.textContent = '▶ 播放中...';
+  const firstTime = recordedNotes[0].time;
+  recPlaybackTimers = recordedNotes.map(n=>setTimeout(()=>{
+    const note = allNotesCache.find(x=>x.midi===n.midi);
+    if(note) {
+      playNote(note.freq, n.dur||0.5);
+      const key = document.querySelector(`#pianoContainer [data-midi="${n.midi}"]`);
+      if(key) { key.classList.add('highlight'); setTimeout(()=>key.classList.remove('highlight'),n.dur*900||200); }
+    }
+  }, n.time - firstTime));
+  // Schedule reset
+  const totalTime = recordedNotes[recordedNotes.length-1].time - firstTime + 1000;
+  setTimeout(()=>{
+    btn.classList.remove('playing');
+    btn.textContent = '▶ 回放';
+  }, totalTime);
+}
+
+function clearRecording() {
+  recordedNotes = [];
+  recPlaybackTimers.forEach(t=>clearTimeout(t));
+  recPlaybackTimers = [];
+  document.getElementById('recBtn').textContent = '⏺ 录制';
+  document.getElementById('playRecBtn').style.display = 'none';
+  document.getElementById('clearRecBtn').style.display = 'none';
+  document.getElementById('recStatus').textContent = '未录制';
+  document.getElementById('recStatus').style.color = 'rgba(255,255,255,0.2)';
+}
+
+document.getElementById('recBtn').addEventListener('click', ()=>{
+  isRecording ? stopRecording() : startRecording();
+});
+document.getElementById('playRecBtn').addEventListener('click', playRecording);
+document.getElementById('clearRecBtn').addEventListener('click', clearRecording);
 
 // ===== PAGE 2: EXPLORE =====
 let exploreRoot = 60;
