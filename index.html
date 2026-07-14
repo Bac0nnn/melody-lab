@@ -266,8 +266,10 @@ buildPiano('pianoContainer', [], null, 36, 83);
     btn.className = 'btn-xs';
     btn.textContent = ch.sym;
     btn.addEventListener('click', ()=>{
-      const freqs = ch.iv.map(iv=>m2f(lastMidiVal+iv));
+      const midis = ch.iv.map(iv=>lastMidiVal+iv);
+      const freqs = midis.map(m=>m2f(m));
       playChord(freqs,1.2);
+      if(isRecording) midis.forEach(m=>recordedNotes.push({midi:m,time:Date.now()-recStartTime,dur:1.2}));
       const highlights = ch.iv.map(iv=>lastMidiVal+iv);
       buildPiano('pianoContainer', highlights);
       document.querySelectorAll('#quickChords .btn-xs').forEach(b=>b.classList.remove('active'));
@@ -281,8 +283,10 @@ buildPiano('pianoContainer', [], null, 36, 83);
     btn.className = 'btn-xs';
     btn.textContent = sc.name.substring(0,4);
     btn.addEventListener('click', ()=>{
-      const freqs = sc.iv.map(iv=>m2f(lastMidiVal+iv));
+      const midis = sc.iv.map(iv=>lastMidiVal+iv);
+      const freqs = midis.map(m=>m2f(m));
       playArp(freqs,0.12);
+      if(isRecording) midis.forEach((m,i)=>recordedNotes.push({midi:m,time:Date.now()-recStartTime+120*i,dur:0.3}));
       const highlights = sc.iv.map(iv=>lastMidiVal+iv);
       buildPiano('pianoContainer', highlights);
       document.querySelectorAll('#quickScales .btn-xs').forEach(b=>b.classList.remove('active'));
@@ -309,6 +313,14 @@ let keyboardOctave = 0;
 let activeKeys = new Map();
 let pressedKeys = new Set();
 
+const allNotesCache = genNotes(36,83);
+
+// ===== 录制/回放（提前声明）=====
+let isRecording = false;
+let recordedNotes = [];
+let recStartTime = 0;
+let recPlaybackTimers = [];
+
 function triggerNote(midi) {
   const note = allNotesCache.find(n=>n.midi===midi);
   if(!note) return;
@@ -321,11 +333,10 @@ function triggerNote(midi) {
     const now = Date.now();
     recordedNotes.push({midi, time: now - recStartTime, dur:0.5});
   }
-  // Flash key
+  // Flash key (only for main piano)
   const key = document.querySelector(`#pianoContainer [data-midi="${midi}"]`);
   if(key) { key.classList.add('highlight'); setTimeout(()=>key.classList.remove('highlight'),150); }
 }
-const allNotesCache = genNotes(36,83);
 
 // 键盘事件
 document.addEventListener('keydown', (e)=>{
@@ -376,11 +387,6 @@ function updateKbdHint() {
 updateKbdHint();
 
 // ===== 录制/回放 =====
-let isRecording = false;
-let recordedNotes = [];
-let recStartTime = 0;
-let recPlaybackTimers = [];
-
 function startRecording() {
   recordedNotes = [];
   isRecording = true;
