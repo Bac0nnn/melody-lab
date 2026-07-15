@@ -98,6 +98,8 @@ input[type=range]{accent-color:#8b5cf6;width:140px}
       <button class="rec-btn" id="playRecBtn" style="display:none">▶ 回放</button>
       <button class="rec-btn" id="clearRecBtn" style="display:none">🗑 清除</button>
       <span id="recStatus" style="font-size:11px;color:rgba(255,255,255,0.2);line-height:32px">未录制</span>
+      <button class="nav-btn" id="audioRecBtn">🎵 音频转谱录制</button>
+      <button class="nav-btn" id="stopAudioRecBtn" style="display:none;color:#fca5a5">⏹ 停止音频录制</button>
     </div>
     <div class="piano-scroll">
     <div class="piano-wrap" id="pianoContainer"></div>
@@ -199,7 +201,7 @@ function playChord(freqs, dur) { freqs.forEach(f => playNote(f, dur||1.2)); }
 function playArp(freqs, intv) { freqs.forEach((f,i) => setTimeout(()=>playNote(f,0.3),i*(intv||0.12)*1000)); }
 
 // ===== MIDI NOTE POSITIONS =====
-const BLACK_SEMIS = { 1:0.7, 3:1.7, 6:3.7, 8:4.7, 10:5.7 };
+const BLACK_SEMIS = { 1:1.0, 3:2.0, 6:4.0, 8:5.0, 10:6.0 };
 
 function buildPiano(containerId, highlightNotes, onNoteClick, rangeStart, rangeEnd) {
   const wrap = document.getElementById(containerId);
@@ -450,6 +452,97 @@ function clearRecording() {
   document.getElementById('recStatus').textContent = '未录制';
   document.getElementById('recStatus').style.color = 'rgba(255,255,255,0.2)';
 }
+
+// ===== 音频转谱录制 =====
+let audioRecStream = null;
+let audioRecAnalyser = null;
+let audioRecData = null;
+let audioRecTimer = null;
+let audioDetectCtx = null;
+let lastDetectedNote = -1;
+let audioRecActive = false;
+
+// 自相关 pitch detection
+function autoCorrelate(buf, sampleRate) {
+  const len = buf.length;
+  let bestR = 0, bestK = 0;
+  for(let k=20;k<len/2;k++) {
+    let sum = 0;
+    for(let i=0;i<len-k;i++) sum += buf[i]*buf[i+k];
+    const r = Math.abs(sum);
+    if(r>bestR) {bestR=r;bestK=k;}
+  }
+  if(bestK===0) return -1;
+  const freq = sampleRate/bestK;
+  if(freq<65||freq>2000) return -1;
+  return freq;
+}
+
+function freqToMidi(freq) {
+  return Math.round(12*Math.log2(freq/440)+69);
+}
+
+function startAudioRecording() {
+  try {
+    audioRecStream = navigator.mediaDevices.getDisplayMedia({audio:true,video:{width:1,height:1}});
+    audioRecStream.then(stream=>{
+      stream.getVideoTracks().forEach(t=>t.stop());
+      audioDetectCtx = new AudioContext();
+      const src = audioDetectCtx.createMediaStreamSource(stream);
+      audioRecAnalyser = audioDetectCtx.createAnalyser();
+      audioRecAnalyser.fftSize = 2048;
+      audioRecData = new Float32Array(audioRecAnalyser.fftSize);
+      src.connect(audioRecAnalyser);
+      audioRecStream = stream;
+      audioRecActive = true;
+      lastDetectedNote = -1;
+      document.getElementById('audioRecBtn').style.display = 'none';
+      document.getElementById('stopAudioRecBtn').style.display = '';
+      document.getElementById('recStatus').textContent = '音频转谱中...';
+      document.getElementById('recStatus').style.color = '#fca5a5';
+      // Start recording if not already
+      if(!isRecording) startRecording();
+      audioRecTimer = setInterval(()=>{
+        if(!audioRecActive) return;
+        audioRecAnalyser.getFloatTimeDomainData(audioRecData);
+        const freq = autoCorrelate(audioRecData, audioDetectCtx.sampleRate);
+        if(freq>0) {
+          const midi = freqToMidi(freq);
+          if(midi!==lastDetectedNote && midi>=36 && midi<=83) {
+            lastDetectedNote = midi;
+            const note = allNotesCache.find(n=>n.midi===midi);
+            if(note) {
+              playNote(note.freq, 0.15);
+              // Record
+              const now = Date.now();
+              recordedNotes.push({midi, time: now - recStartTime, dur:0.3});
+              // Flash key
+              const key = document.querySelector(`#pianoContainer [data-midi="${midi}"]`);
+              if(key) { key.classList.add('highlight'); setTimeout(()=>key.classList.remove('highlight'),200); }
+            }
+          }
+        }
+      }, 120);
+    }).catch(e=>{updateAudioStatus('音频捕获失败: '+e.message, true)});
+  } catch(e) {updateAudioStatus('音频输入失败: '+e.message, true);}
+}
+
+function stopAudioRecording() {
+  audioRecActive = false;
+  if(audioRecTimer) {clearInterval(audioRecTimer);audioRecTimer=null;}
+  if(audioRecStream) {
+    audioRecStream.getTracks().forEach(t=>t.stop());
+    audioRecStream=null;
+  }
+  if(audioDetectCtx) {audioDetectCtx.close();audioDetectCtx=null;}
+  audioRecAnalyser=null; audioRecData=null;
+  document.getElementById('audioRecBtn').style.display = '';
+  document.getElementById('stopAudioRecBtn').style.display = 'none';
+  if(isRecording) stopRecording();
+}
+
+document.getElementById('audioRecBtn').addEventListener('click', startAudioRecording);
+document.getElementById('stopAudioRecBtn').addEventListener('click', stopAudioRecording);
 
 document.getElementById('recBtn').addEventListener('click', ()=>{
   isRecording ? stopRecording() : startRecording();
