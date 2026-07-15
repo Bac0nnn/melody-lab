@@ -298,16 +298,22 @@ buildPiano('pianoContainer', [], null, 36, 83);
 
 // ===== 键盘映射 =====
 const KEY_MAP = {
-  'z':48,'s':49,'x':50,'d':51,'c':52,
-  'v':53,'g':54,'b':55,'h':56,'n':57,'j':58,'m':59,
-  'q':60,'2':61,'w':62,'3':63,'e':64,
-  'r':65,'5':66,'t':67,'6':68,'y':69,'7':70,'u':71,
-  'i':72,'9':73,'o':74,'0':75,'p':76
+  // QWERTYUIOP → C2-E3 (白键)
+  'q':36,'w':38,'e':40,'r':41,'t':43,'y':45,'u':47,
+  'i':48,'o':50,'p':52,
+  // ASDFGHJKL → F3-G4
+  'a':53,'s':55,'d':57,'f':59,
+  'g':60,'h':62,'j':64,'k':65,'l':67,
+  // ZXCVBNM → A4-G5
+  'z':69,'x':71,'c':72,'v':74,'b':76,'n':77,'m':79,
+  // ;' → A5-B5
+  ';':81,"'":83
 };
 const KEY_HINT = [
-  ['c2','z','s','x','d','c','v','g','b','h','n','j','m'],
-  ['c3','q','2','w','3','e','r','5','t','6','y','7','u'],
-  ['c4','i','9','o','0','p']
+  ['c2','q','w','e','r','t','y','u','i','o','p'],
+  ['c3','a','s','d','f','g','h','j','k','l'],
+  ['c4','z','x','c','v','b','n','m'],
+  ['c5',';',"'"]
 ];
 let keyboardOctave = 0;
 let activeKeys = new Map();
@@ -360,12 +366,10 @@ document.addEventListener('keyup', (e)=>{
 function updateKbdHint() {
   const el = document.getElementById('kbdHint');
   if(!el) return;
-  const oct = 3 + keyboardOctave;
-  const noteNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
   let html = '<span style="margin-right:6px">⌨:</span>';
-  let prevWhite = null;
+  const noteNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
   KEY_HINT.forEach((row,ri)=>{
-    html += '<span style="margin:0 4px">';
+    html += '<span style="margin:0 2px">';
     row.forEach((key,ki)=>{
       if(ki===0) return; // skip note name
       const idx = KEY_MAP[key];
@@ -373,11 +377,7 @@ function updateKbdHint() {
       const absMidi = idx + keyboardOctave*12;
       const nn = noteNames[absMidi%12];
       const isBlack = nn.includes('#');
-      if(isBlack) {
-        html += `<kbd style="background:rgba(255,255,255,0.08)">${key.toUpperCase()}</kbd>`;
-      } else {
-        html += `<kbd>${key.toUpperCase()}</kbd>`;
-      }
+      html += `<kbd>${key.toUpperCase()}</kbd>`;
     });
     html += '</span>';
   });
