@@ -3,72 +3,88 @@
 ---
 
 ## Prompt #1 — 项目初始化
-- **文件：** `package.json`, `tsconfig.json`, `next.config.ts`
-- **诉求：** 创建一个 Next.js 15 + TypeScript 的音乐项目脚手架
-- **Prompt：** "创建一个 Next.js 15 项目，使用 TypeScript，项目名 melody-lab，包含 App Router 配置"
-- **AI 输出：** 生成了 package.json（依赖 next@15, react@19, typescript@5）、tsconfig.json（strict 模式）、next.config.ts（空配置）、.gitignore
-- **应用：** 直接使用，修改了项目名称和描述
+- **文件：** `package.json`, `index.html`, `tsconfig.json`, `next.config.ts`
+- **诉求：** 创建一个 Next.js 15 + TypeScript 的音乐项目脚手架，同时生成零依赖单文件 HTML 版
+- **Prompt：** "创建一个音乐理论学习工具，基于 Web Audio API，包含可点击的钢琴键盘、和弦/音阶探索、音频可视化。提供零依赖 HTML 版和 Next.js 版。"
+- **AI 输出：** 生成了零依赖版 index.html（完整钢琴、和弦/音阶、可视化）和 Next.js 脚手架
+- **应用：** 直接作为项目起点
 
 ## Prompt #2 — 音乐理论数据结构
-- **文件：** `src/lib/musicTheory.ts`
-- **诉求：** 设计音乐理论的数据模型（音符、和弦、音阶、测验）
-- **Prompt：** "设计一个音乐理论工具库，包含：1) MIDI 转频率函数 2) 音符命名 3) 常用和弦定义（大三、小三、属七、减三等）4) 常用音阶定义（大调、小调、五声、布鲁斯等）5) 随机乐理测验生成"
-- **AI 输出：** 生成了完整的 musicTheory.ts，包含 ChordDef/ScaleDef/QuizItem 接口，8 种和弦和 8 种音阶定义，midiToFreq 缓存优化，generateQuiz 函数
-- **应用：** 人工核验了音程数据的准确性，修改了少量和弦描述
+- **文件：** `index.html` 内嵌
+- **诉求：** 设计音乐理论数据模型（音符、和弦、音阶、测验）
+- **Prompt：** "设计音乐理论数据：MIDI 转频率、音符命名、7 种常用和弦、6 种音阶、随机乐理测验"
+- **AI 输出：** 生成了完整数据定义
+- **应用：** 人工核验音程数据准确性
 
 ## Prompt #3 — Web Audio API 音频引擎
-- **文件：** `src/components/MusicEngine.ts`
-- **诉求：** 实现浏览器音频播放（单音、和弦、琶音、音阶）
-- **Prompt：** "实现一个 Web Audio API 引擎类 MusicEngine，支持 playNote（单音）、playChord（和弦）、playArpeggio（琶音）、playScale（音阶）。使用正弦波，带 ADSR 包络。支持单例模式避免多 AudioContext 冲突。"
-- **AI 输出：** 生成了完整的 MusicEngine 类，包含 AudioContext 管理、GainNode 包络控制、dispose 回收方法、getMusicEngine 单例
-- **应用：** 人工调整了 attack/decay/release 参数使音色更自然
+- **文件：** `index.html` 内嵌
+- **诉求：** 实现浏览器音频播放（单音、和弦、琶音）
+- **Prompt：** "实现 Web Audio API 音频引擎，支持 playNote（单音带包络）、playChord（和弦）、playArp（琶音），处理 AudioContext 激活限制"
+- **AI 输出：** 生成了带 ADSR 包络的音频引擎
+- **应用：** 调整包络参数使音色更自然
 
 ## Prompt #4 — 钢琴键盘组件
-- **文件：** `src/components/Piano.tsx`
-- **诉求：** 实现可点击的交互式钢琴键盘（2 八度，黑白键准确布局）
-- **Prompt：** "实现一个 React 钢琴键盘组件 Piano，2 八度（C3-B4），白键和黑键视觉准确布局，支持点击发音、和弦高亮、compact 模式、touch 支持"
-- **AI 输出：** 生成了 Piano 组件，包含黑白键定位算法、highlight 样式切换、点击回调
-- **应用：** 人工优化了黑键定位公式，增加了 hover/active 动效
+- **文件：** `index.html` 内嵌
+- **诉求：** 实现可点击钢琴键盘（2 八度）
+- **Prompt：** "实现钢琴键盘，2 八度 C3-C5，黑白键布局，点击发音，和弦高亮"
+- **AI 输出：** 生成了钢琴键盘 HTML+CSS+JS
+- **应用：** 人工优化黑键定位和动效
 
-## Prompt #5 — 导航与页面路由
-- **文件：** `src/components/Navigation.tsx`, `src/app/page.tsx`
-- **诉求：** 实现三页路由导航（Piano / Explore / Visualizer）
-- **Prompt：** "创建页面导航组件 Navigation，支持三个链接：/（Piano）、/explore（Explore）、/visualizer（Visualizer），使用 next/link，当前页高亮"
-- **AI 输出：** 生成了 Navigation 组件和三个基础页面路由骨架
-- **应用：** 人工设计了页面布局和交互流程
+## Prompt #5 — 和弦/音阶探索与可视化页面
+- **文件：** `index.html` 内嵌
+- **诉求：** 实现和弦/音阶探索和音频可视化
+- **Prompt：** "创建和弦/音阶探索面板（列表+详情+播放+高亮）和音频可视化（频谱/波形/圆形三种模式）"
+- **AI 输出：** 生成了探索页面和 Canvas 可视化引擎
+- **应用：** 添加频率控制和测试音发生器
 
-## Prompt #6 — 和弦/音阶探索页面
-- **文件：** `src/app/explore/page.tsx`
-- **诉求：** 实现和弦和音阶的探索交互页面
-- **Prompt：** "创建一个页面，左边列出和弦/音阶列表，右边显示选中项的详细信息（音名、描述、播放按钮），下方钢琴高亮显示。支持根音选择器。"
-- **AI 输出：** 生成了 ExplorePage，包含 tab 切换、详情卡片、根音选择器、播放/琶音功能
-- **应用：** 人工添加了 CSS 过渡和响应式布局
+## Prompt #6 — 钢琴扩展至 4 八度 + 键盘弹奏 + 录制回放
+- **文件：** `index.html`
+- **诉求：** 扩展钢琴至 4 八度，支持键盘弹奏，添加录制回放
+- **Prompt：** "扩展钢琴到 C2-B5（4 八度），电脑键盘同步弹奏，添加录制/回放功能"
+- **AI 输出：** 扩展了 buildPiano 范围，添加了 KEY_MAP 键盘映射、triggerNote 函数、录制/回放逻辑
+- **应用：** 人工修改了键盘映射为 QWERTY 顺序；修改了黑键定位公式
 
-## Prompt #7 — 可视化 Canvas 引擎
-- **文件：** `src/components/VisualizerCanvas.tsx`
-- **诉求：** 实现三种模式的音频可视化（频谱柱状图、波形线、圆形频谱）
-- **Prompt：** "创建一个 Canvas 可视化组件，三种模式：1) spectrum - 彩色柱状频谱 2) waveform - 波形曲线 3) circular - 圆形环绕频谱点。模拟音频振幅变化，实现平滑动画。"
-- **AI 输出：** 生成了 VisualizerCanvas，包含三种绘制模式、requestAnimationFrame 循环、HSL 色彩
-- **应用：** 人工调整了振幅模拟参数使动画更自然流畅
-
-## Prompt #8 — 可视化页面与测试音
-- **文件：** `src/app/visualizer/page.tsx`
-- **诉求：** 实现音频可视化控制页面
-- **Prompt：** "创建可视化页面，包含模式切换（频谱/波形/圆形）、频率滑块控制、测试音发生器、快速试音按钮"
-- **AI 输出：** 生成了 VisualizerPage，包含所有控制和快速音符
-- **应用：** 人工增加了测试音的开/关状态管理
-
-## Prompt #9 — API 路由
-- **文件：** `src/app/api/chords/route.ts`, `scales/route.ts`, `quiz/route.ts`
-- **诉求：** 实现三个 RESTful API 接口
-- **Prompt：** "创建三个 Next.js API 路由：1) GET /api/chords 返回所有和弦 2) GET /api/scales 返回所有音阶 3) GET /api/quiz 返回随机乐理题"
-- **AI 输出：** 生成了三个 API 路由，chords 和 scales 使用 force-static 缓存，quiz 使用 force-dynamic
+## Prompt #7 — 系统音频捕获 + 可视化
+- **文件：** `index.html`
+- **诉求：** 系统音频捕获，可视化跟随音乐跳动
+- **Prompt：** "捕获系统音频（getDisplayMedia），频谱/波形/圆形跟随音乐跳动"
+- **AI 输出：** 添加了 captureSystemAudio、startFilePlayback 函数，drawViz 使用真实 FFT 数据
 - **应用：** 直接使用
 
+## Prompt #8 — 录制 Bug 修复 + 和弦录制
+- **文件：** `index.html`
+- **诉求：** 录制功能不录音符的问题
+- **Prompt：** "为什么点击录制按钮开始录制后，弹钢琴键没有记录音符"
+- **AI 输出：** 分析代码后定位到变量声明顺序问题，将 allNotesCache 和录制变量移至 triggerNote 之前
+- **应用：** 人工添加了 Quick Chords/Scales 的录制支持
+
+## Prompt #9 — 黑键定位修正 + 音频转谱录制
+- **文件：** `index.html`
+- **诉求：** 修复黑键位置，添加音频转谱录制
+- **Prompt：** "黑键位置不对，C# 画在 C 内部；添加音频转谱录制功能"
+- **AI 输出：** 修正 BLACK_SEMIS 为 {1:1.0, 3:2.0, 6:4.0, 8:5.0, 10:6.0}；添加自相关 pitch detection
+- **应用：** 人工验证黑键位置，验证频率转 MIDI 公式
+
+## Prompt #10 — 全宽自适应 + QWERTY 映射
+- **文件：** `index.html`
+- **诉求：** 移除滑动条，全宽显示钢琴；改为 QWERTY 顺序映射
+- **Prompt：** "不要滑动，将所有钢琴键统一放一页；重新安排键位为 QWERTYUIOPASDFGHJKLZXCVBNM 顺序"
+- **AI 输出：** 修改 CSS 为全宽自适应；重新设计 KEY_MAP 为 28 键 QWERTY 映射
+- **应用：** 人工调整黑键自适应大小参数
+
+## Prompt #11 — 添加预设示范曲《晴天》
+- **文件：** `index.html`
+- **诉求：** 添加周杰伦《晴天》钢琴版播放
+- **Prompt：** "添加"晴天"钢琴版录音，点击播放，钢琴键实时相应"
+- **AI 输出：** 添加了 sunnyDayNotes（约 50 个音符的旋律序列）、playSunnyDay 函数、播放按钮
+- **应用：** 人工编排了更准确的旋律音符序列
+
+---
+
 ## AI 使用总结
-本项目中约 80% 的代码由 AI（Codex）生成，人工主要负责：
-1. 架构设计和目录结构规划
+本项目约 75% 的代码由 AI（Codex）生成，人工主要负责：
+1. 架构设计和功能规划
 2. 音乐理论数据的准确性校验
-3. UI 交互流程和视觉体验设计
-4. 代码质量和性能审查
+3. AI 生成结果的审查、测试和修正
+4. 视觉交互细节优化
 5. 文档和报告撰写

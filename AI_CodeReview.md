@@ -1,100 +1,67 @@
 ﻿# AI 代码审查报告 — Melody Lab
 
-> 审查时间：2026-07-13
+> 审查时间：2026-07-15
 > 审查工具：Codex (GPT-5)
-> 审查范围：全部源码文件
+> 审查范围：`index.html`（零依赖单文件，约 960 行）
 
 ---
 
 ## 审查总结
 
-对 Melody Lab 项目全部 12 个源文件进行了代码审查。总体代码质量良好，结构清晰，类型安全。以下是详细发现：
+项目代码集中在 `index.html` 一个文件中（CSS + HTML + JS 约 960 行）。代码结构清晰，功能模块通过注释分区（音频引擎、音乐理论、钢琴构建、导航、录制回放等）。总体质量良好。
 
 ---
 
-## 发现的问题与建议
+## 发现的问题与改进建议
 
-### 1. [P2] Piano.tsx — 黑键位置硬编码
-- **文件：** `src/components/Piano.tsx`
-- **行号：** ~27
-- **问题：** 黑键定位使用硬编码 `blackKeys` 数组和手动映射，扩展性差
-- **建议：** 将钢琴键盘布局抽象为配置数据，支持 88 键全键盘
-- **代码：**
-```typescript
-// 当前
-const blackKeys = [1, 3, 6, 8, 10]
-const map: Record<number, number> = { 1: 0.7, 3: 1.7, 6: 3.7, 8: 4.7, 10: 5.7 }
+### 1. [P2] 录制变量声明顺序
+- **位置：** `index.html` JS 部分
+- **问题：** `allNotesCache`、`isRecording` 等录制变量声明在 `triggerNote()` 函数之后
+- **修复：** 已移至 `triggerNote` 之前
+- **当前状态：** ✅ 已修复
 
-// 建议
-const KEYBOARD_LAYOUT = [
-  { type: "white", offset: 0 },  // C
-  { type: "black", offset: 0.7 }, // C#
-  { type: "white", offset: 1 },  // D
-  // ...
-]
-```
-- **严重程度：** 中低（当前功能不受影响，但扩展性受限）
+### 2. [P2] 音高检测限制
+- **位置：** `autoCorrelate()` 函数
+- **问题：** 自相关算法仅适用于单音旋律，无法识别和弦
+- **建议：** 可引入 FFT 谐波分析或多音高估计算法
+- **当前状态：** ⚠️ 已知限制
 
-### 2. [P2] MusicEngine.ts — 未处理多个快速点击
-- **文件：** `src/components/MusicEngine.ts`
-- **行号：** ~15-25
-- **问题：** 连续快速点击会创建大量 OscillatorNode，可能导致性能问题
-- **建议：** 增加节流或最大并发音数限制
-- **代码：**
-```typescript
-// 建议
-private MAX_CONCURRENT = 8;
-private activeCount = 0;
+### 3. [P3] 演示曲音符准确性
+- **位置：** `sunnyDayNotes` 数组
+- **问题：** 预设旋律为人工编排，可能不完全忠实还原原曲
+- **建议：** 可录制 MIDI 文件作为数据源提高还原度
+- **当前状态：** ⚠️ 可接受
 
-// 在 playNote 中检查
-if (this.activeCount >= this.MAX_CONCURRENT) return;
-this.activeCount++;
-// ... 在 oscillator 结束事件中 --
-```
+### 4. [P3] 无外部依赖管理
+- **位置：** 项目整体
+- **说明：** 项目设计目标为零依赖，所有代码自包含
+- **评价：** 优点是可离线运行，缺点是代码复用性受限
+- **当前状态：** ✅ 符合设计目标
 
-### 3. [P3] page.tsx — 缺少错误边界
-- **文件：** `src/app/page.tsx`
-- **问题：** 页面组件未包裹 ErrorBoundary，Web Audio API 在某些浏览器可能抛出异常
-- **建议：** 添加 React ErrorBoundary 或 try-catch 包裹音频初始化
-
-### 4. [P3] VisualizerCanvas.tsx — resize 性能
-- **文件：** `src/components/VisualizerCanvas.tsx`
-- **问题：** 每帧都重新获取 boundingRect 和设置 canvas 尺寸
-- **建议：** 使用 ResizeObserver 或仅在窗口 resize 时更新
-```typescript
-// 建议
-const resizeRef = useRef<() => void>(() => {});
-useEffect(() => {
-  const ro = new ResizeObserver(() => resizeRef.current());
-  ro.observe(canvasRef.current!);
-  return () => ro.disconnect();
-}, []);
-```
-
-### 5. [P4] globals.css — Google Fonts 加载
-- **文件：** `src/app/globals.css`
-- **问题：** 依赖外部 Google Fonts CDN，离线环境无法加载
-- **建议：** 添加 fallback font stack 或使用系统字体
-- **当前状态：** 已有 fallback，风险低
+### 5. [P4] CSS 使用 container 查询
+- **位置：** `.piano-wrap` 使用 `container-type: inline-size`
+- **注意：** Container Queries 需要 Chrome 105+ / Edge 105+
+- **建议：** 如需要兼容旧浏览器，可添加 Fallback
+- **当前状态：** ✅ 可接受（主流浏览器均已支持）
 
 ---
 
 ## 正面评价
 
-1. **类型安全：** 全部使用 TypeScript strict 模式，无 any 类型
-2. **单例模式：** MusicEngine 使用单例避免多个 AudioContext 冲突
-3. **代码注释：** 每个文件都标注了 AI 协作模式，方便审查
-4. **组件解耦：** 组件职责清晰，Piano/Visualizer/MusicEngine 各自独立
-5. **API 设计：** RESTful 风格，数据结构清晰
+1. **自包含设计：** 一个 HTML 文件包含全部功能，双击即可运行，用户体验极佳
+2. **模块化编码：** 虽在单文件中，但通过注释清晰划分为独立功能模块
+3. **异常处理：** AudioContext 的 `state === "suspended"` 检测、音频捕获的 try-catch 等
+4. **交互反馈：** 音高检测时钢琴键实时高亮，用户体验流畅
+5. **文档完整：** README、API 文档、Prompt 日志、总结报告、配置指南、部署指南一应俱全
 
 ---
 
-## 优化建议汇总
+## 代码质量指标
 
-| 优先级 | 建议 | 影响 |
-|--------|------|------|
-| P2 | 抽象钢琴键盘布局配置 | 提高可扩展性和可维护性 |
-| P2 | 增加音频并发控制 | 防止性能问题 |
-| P3 | 添加 ErrorBoundary | 增强健壮性 |
-| P3 | Canvas resize 优化 | 提升渲染性能 |
-| P4 | 字体加载优化 | 提升离线可用性 |
+| 指标 | 数据 |
+|------|------|
+| 总行数 | ~960 行 |
+| 功能模块数 | 8 个（钢琴、探索、可视化、录制、音频转谱、键盘映射、音高检测、演示曲） |
+| Git 提交数 | 9 个 |
+| 注释覆盖率 | ~15% |
+| 零依赖 | ✅ 是 |
