@@ -103,6 +103,11 @@ input[type=range]{accent-color:#8b5cf6;width:140px}
     </div>
     <div class="piano-wrap" id="pianoContainer"></div>
     <div class="kbd-hint" id="kbdHint"></div>
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:12px">
+      <button class="nav-btn" id="sunnyDayBtn">🎹 播放《晴天》</button>
+      <button class="nav-btn" id="stopSunnyBtn" style="display:none;color:#fca5a5">⏹ 停止</button>
+      <span id="sunnyStatus" style="font-size:12px;color:rgba(255,255,255,0.3)">周杰伦 — 晴天（钢琴版）</span>
+    </div>
   </div>
 
   <!-- ========== PAGE 2: EXPLORE ========== -->
@@ -547,6 +552,116 @@ document.getElementById('recBtn').addEventListener('click', ()=>{
 });
 document.getElementById('playRecBtn').addEventListener('click', playRecording);
 document.getElementById('clearRecBtn').addEventListener('click', clearRecording);
+
+// ===== 《晴天》钢琴版 =====
+const sunnyDayNotes = [
+  {midi:67,time:0,dur:0.35},   // G4
+  {midi:67,time:350,dur:0.35}, // G4
+  {midi:69,time:700,dur:0.35}, // A4
+  {midi:72,time:1050,dur:0.5}, // C5
+  {midi:71,time:1550,dur:0.4}, // B4
+  {midi:67,time:1950,dur:0.4}, // G4
+  {midi:69,time:2350,dur:0.4}, // A4
+  {midi:67,time:2750,dur:0.6}, // G4
+  {midi:64,time:3350,dur:0.3}, // E4
+  {midi:65,time:3650,dur:0.3}, // F4
+  {midi:64,time:3950,dur:0.3}, // E4
+  {midi:62,time:4250,dur:0.3}, // D4
+  {midi:60,time:4550,dur:0.5}, // C4
+  // Chorus 1
+  {midi:72,time:5200,dur:0.35}, // C5
+  {midi:71,time:5550,dur:0.35}, // B4
+  {midi:69,time:5900,dur:0.35}, // A4
+  {midi:67,time:6250,dur:0.35}, // G4
+  {midi:72,time:6600,dur:0.35}, // C5
+  {midi:71,time:6950,dur:0.35}, // B4
+  {midi:69,time:7300,dur:0.35}, // A4
+  {midi:67,time:7650,dur:0.5}, // G4
+  {midi:65,time:8150,dur:0.3}, // F4
+  {midi:64,time:8450,dur:0.3}, // E4
+  {midi:62,time:8750,dur:0.3}, // D4
+  {midi:60,time:9050,dur:0.5}, // C4
+  // Bridge
+  {midi:64,time:9700,dur:0.4}, // E4
+  {midi:67,time:10100,dur:0.4}, // G4
+  {midi:72,time:10500,dur:0.4}, // C5
+  {midi:71,time:10900,dur:0.4}, // B4
+  {midi:69,time:11300,dur:0.4}, // A4
+  {midi:67,time:11700,dur:0.4}, // G4
+  {midi:65,time:12100,dur:0.3}, // F4
+  {midi:64,time:12400,dur:0.5}, // E4
+  // Chorus 2
+  {midi:76,time:13100,dur:0.35}, // E5
+  {midi:74,time:13450,dur:0.35}, // D5
+  {midi:72,time:13800,dur:0.35}, // C5
+  {midi:71,time:14150,dur:0.35}, // B4
+  {midi:69,time:14500,dur:0.35}, // A4
+  {midi:67,time:14850,dur:0.5}, // G4
+  {midi:72,time:15400,dur:0.4}, // C5
+  {midi:76,time:15800,dur:0.4}, // E5
+  {midi:74,time:16200,dur:0.4}, // D5
+  {midi:72,time:16600,dur:0.4}, // C5
+  {midi:71,time:17000,dur:0.4}, // B4
+  {midi:69,time:17400,dur:0.6}, // A4
+  // Outro
+  {midi:67,time:18200,dur:0.4}, // G4
+  {midi:69,time:18600,dur:0.4}, // A4
+  {midi:72,time:19000,dur:0.5}, // C5
+  {midi:71,time:19500,dur:0.4}, // B4
+  {midi:69,time:19900,dur:0.4}, // A4
+  {midi:67,time:20300,dur:0.4}, // G4
+  {midi:64,time:20700,dur:0.4}, // E4
+  {midi:62,time:21100,dur:0.4}, // D4
+  {midi:60,time:21500,dur:0.8}, // C4
+];
+let sunnyTimers = [];
+let sunnyPlaying = false;
+
+function playSunnyDay() {
+  if(sunnyPlaying) return;
+  sunnyPlaying = true;
+  const btn = document.getElementById('sunnyDayBtn');
+  const stopBtn = document.getElementById('stopSunnyBtn');
+  btn.style.display = 'none';
+  stopBtn.style.display = '';
+  document.getElementById('sunnyStatus').textContent = '🎵 播放中...';
+  sunnyTimers = [];
+  const allNotes = allNotesCache;
+  sunnyDayNotes.forEach(n=>{
+    const t = setTimeout(()=>{
+      const note = allNotes.find(x=>x.midi===n.midi);
+      if(note) {
+        playNote(note.freq, n.dur||0.5);
+        const key = document.querySelector(`#pianoContainer [data-midi="${n.midi}"]`);
+        if(key) { key.classList.add('highlight'); }
+      }
+    }, n.time);
+    sunnyTimers.push(t);
+    // Clear highlight after note duration
+    const t2 = setTimeout(()=>{
+      const key = document.querySelector(`#pianoContainer [data-midi="${n.midi}"]`);
+      if(key) key.classList.remove('highlight');
+    }, n.time + (n.dur||0.5)*900);
+    sunnyTimers.push(t2);
+  });
+  // Schedule end
+  const totalTime = sunnyDayNotes[sunnyDayNotes.length-1].time + 1200;
+  sunnyTimers.push(setTimeout(()=>{stopSunnyDay()}, totalTime));
+}
+
+function stopSunnyDay() {
+  sunnyPlaying = false;
+  sunnyTimers.forEach(t=>clearTimeout(t));
+  sunnyTimers = [];
+  document.getElementById('sunnyDayBtn').style.display = '';
+  document.getElementById('stopSunnyBtn').style.display = 'none';
+  document.getElementById('sunnyStatus').textContent = '周杰伦 — 晴天（钢琴版）';
+  // Remove all highlights
+  document.querySelectorAll('#pianoContainer .white-key.highlight,#pianoContainer .black-key.highlight').forEach(k=>k.classList.remove('highlight'));
+}
+
+document.getElementById('sunnyDayBtn').addEventListener('click', playSunnyDay);
+document.getElementById('stopSunnyBtn').addEventListener('click', ()=>{stopSunnyDay();});
 
 // ===== PAGE 2: EXPLORE =====
 let exploreRoot = 60;
