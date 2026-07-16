@@ -4,7 +4,7 @@
 一个基于 Web Audio API 的交互式音乐创作与学习工具。包含 **4 个八度（C2–B5）全尺寸钢琴键盘**、和弦/音阶探索器、实时音频可视化、**钢琴录制回放**、**系统音频转谱录制**、以及预设钢琴曲播放功能。
 
 **零依赖体验：** 双击 `index.html` 即可运行。  
-**在线体验：** 已部署至 [melody-lab.vercel.app](https://melody-lab.vercel.app)
+**在线体验：** 已部署至 [bac0nnn.github.io/melody-lab](https://bac0nnn.github.io/melody-lab)
 
 ---
 
@@ -108,3 +108,4 @@ melody-lab/
 ---
 
 > 项目仓库：[github.com/Bac0nnn/melody-lab](https://github.com/Bac0nnn/melody-lab)
+

@@ -1,7 +1,7 @@
 ﻿# API 接口文档 — Melody Lab
 
 ## 基础信息
-- **Base URL:** `https://melody-lab.vercel.app`（部署后替换）
+- **Base URL:** `https://bac0nnn.github.io/melody-lab`（部署后替换）
 - **数据格式:** JSON
 - **编码:** UTF-8
 
@@ -11,7 +11,7 @@
 
 ### 请求示例
 ```
-GET https://melody-lab.vercel.app/api/chords
+GET https://bac0nnn.github.io/melody-lab/api/chords
 ```
 
 ### 响应格式
@@ -48,7 +48,7 @@ GET https://melody-lab.vercel.app/api/chords
 
 ### 请求示例
 ```
-GET https://melody-lab.vercel.app/api/scales
+GET https://bac0nnn.github.io/melody-lab/api/scales
 ```
 
 ### 响应格式
@@ -73,7 +73,7 @@ GET https://melody-lab.vercel.app/api/scales
 
 ### 请求示例
 ```
-GET https://melody-lab.vercel.app/api/quiz
+GET https://bac0nnn.github.io/melody-lab/api/quiz
 ```
 
 ### 响应格式
@@ -97,5 +97,6 @@ GET https://melody-lab.vercel.app/api/quiz
 
 ## 测试方式
 1. **浏览器直接访问**地址栏
-2. **curl：** `curl https://melody-lab.vercel.app/api/chords`
+2. **curl：** `curl https://bac0nnn.github.io/melody-lab/api/chords`
 3. **Postman** 导入 URL 测试
+
